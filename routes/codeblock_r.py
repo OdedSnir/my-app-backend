@@ -1,6 +1,7 @@
 from fastapi import APIRouter
 from database.connection import db
 from models.codeblock_m import CodeBlock
+from sockets.codeblock_ws import rooms
 
 router = APIRouter()
 
@@ -11,3 +12,4 @@ async def get_all_codeblocks():
     for block in blocks:
         block['_id'] = str(block['_id'])
     return blocks
+
