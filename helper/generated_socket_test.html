@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>WebSocket CodeBlock Test</title>
+</head>
+<body>
+  <h1>WebSocket Code Editor</h1>
+  <textarea id="editor" rows="20" cols="80"></textarea>
+  <p id="role"></p>
+  <p id="studentCount"></p>
+
+  <script>
+    const blockId = prompt("Enter code block ID:");
+    const ws = new WebSocket(`ws://localhost:8000/ws/${blockId}`);
+
+    const editor = document.getElementById("editor");
+    const roleEl = document.getElementById("role");
+    const studentCountEl = document.getElementById("studentCount");
+
+    let role = "unknown";
+
+    ws.onmessage = (event) => {
+      console.log("Incoming message:", event.data);
+      try {
+        const data = JSON.parse(event.data);
+        if (data.type === "init") {
+          role = data.role;
+          roleEl.innerText = `Role: ${role}`;
+          studentCountEl.innerText = `Students: ${data.student_count}`;
+          editor.value = data.code;
+          editor.disabled = role === "mentor";
+        } else {
+          // plain text updates
+          editor.value = event.data;
+        }
+      } catch {
+        // fallback for plain text broadcast
+        editor.value = event.data;
+      }
+    };
+
+    editor.addEventListener("input", () => {
+      if (role === "student") {
+        ws.send(editor.value);
+      }
+    });
+  </script>
+</body>
+</html>
