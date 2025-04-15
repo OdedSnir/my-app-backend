@@ -1,9 +1,13 @@
+import sys
+import os
 import asyncio
-from motor.motor_asyncio import AsyncIOMotorClient
 
-MONGO_URI = "mongodb://localhost:27017"
-client = AsyncIOMotorClient(MONGO_URI)
-db = client["codeblocks_db"]
+# Add backend/ to the Python path
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from database.connection import get_DB_connection
+
+
+db = get_DB_connection()
 
 seed_data = [
     {

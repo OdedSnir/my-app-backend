@@ -1,5 +1,14 @@
+from dotenv import load_dotenv
+import os
 from motor.motor_asyncio import AsyncIOMotorClient
 
-MONGO_URI = "mongodb://localhost:27017"
-client = AsyncIOMotorClient(MONGO_URI)
-db = client["codeblocks_db"]
+def get_DB_connection() -> AsyncIOMotorClient:
+    load_dotenv()
+    MONGO_URI = os.getenv("MONGO_URI")
+
+    client = AsyncIOMotorClient(MONGO_URI)
+    db = client["codeblocks_db"]
+    return db
+
+
+db = get_DB_connection()

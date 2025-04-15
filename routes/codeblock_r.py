@@ -1,7 +1,6 @@
 from fastapi import APIRouter
 from database.connection import db
-from models.codeblock_m import CodeBlock
-from sockets.codeblock_ws import rooms
+
 
 router = APIRouter()
 
