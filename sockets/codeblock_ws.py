@@ -4,6 +4,7 @@ from bson import ObjectId
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from database.connection import db
 from typing import Dict
+from helper.helper import codes_match
 
 router = APIRouter()
 
@@ -13,70 +14,90 @@ rooms: Dict[str, Dict] = {}
 async def websocket_endpoint(websocket: WebSocket, block_id: str):
     await websocket.accept()
 
+    role = "student"  # default fallback role
+    defaults: dict = {
+        "code": "print('hello world')",
+        "solution": "print('Hello World')"
+    }
+
     # Initialize room if not exists
     if block_id not in rooms:
-        defaults: dict = {
-            "code": "print('hello world')",
-            "solution": "print('Hello World')"
-        }
-
         rooms[block_id] = {
             "mentor": websocket,
             "students": [],
             "code": defaults["code"],
-            "solution": defaults["solution"]
+            "solution": defaults["solution"],
+            "solved": False
         }
         role = "mentor"
         try:
             codeblock = await db.codeblocks.find_one({"_id": ObjectId(block_id)})
-            # set code to the initial code of the codeblock
             rooms[block_id]["code"] = codeblock["initial_code"]
-            # set solution to the solution for later use
             rooms[block_id]["solution"] = codeblock["solution"]
         except:
-            if rooms["code"] == defaults["code"]:
+            if rooms[block_id]["code"] == defaults["code"]:
                 print("code stayed default for some reason")
-            if rooms["solution"] == defaults["solution"]:
+            if rooms[block_id]["solution"] == defaults["solution"]:
                 print("solution stayed default for some reason")
-
     else:
         rooms[block_id]["students"].append(websocket)
-        role = "student"
 
-    # Send role and current code to this user
+    # ✅ Send initial message to *everyone*
     await websocket.send_json({
         "type": "init",
         "role": role,
         "code": rooms[block_id]["code"],
         "student_count": len(rooms[block_id]["students"]),
-        "solution": rooms[block_id]["solution"]
+        "solution": rooms[block_id]["solution"],
+        "solved": rooms[block_id]["solved"]
+    })
+
+    # ✅ Optional: immediate update after init
+    await websocket.send_json({
+        "type": "update",
+        "role": role,
+        "code": rooms[block_id]["code"],
+        "student_count": len(rooms[block_id]["students"]),
+        "solved": rooms[block_id]["solved"]
     })
 
     try:
         while True:
-            data = await websocket.receive_text()
+            data = await websocket.receive_json()
+            print(data)
 
-            # Only students send updates
             if role == "student":
-                rooms[block_id]["code"] = data
+                rooms[block_id]["code"] = data['code']
+                print(f"checking if {rooms[block_id]['code']} is the same as {rooms[block_id]['solution']}")
+                rooms[block_id]["solved"] = codes_match(
+                    rooms[block_id]["code"], rooms[block_id]["solution"]
+                )
+                if rooms[block_id]["solved"]:
+                    print(f"websocket {websocket} solved the problem")
 
-                # Broadcast to all students except sender
+                # Broadcast update to all students
                 for student in rooms[block_id]["students"]:
-                    if student != websocket:
-                        await student.send_text(data)
+                    await student.send_json({
+                        "type": "update",
+                        "code": data['code'],
+                        "solved": rooms[block_id]["solved"]
+                    })
 
-                # Also send to mentor
-                await rooms[block_id]["mentor"].send_text(data)
+                # Also notify the mentor
+                await rooms[block_id]["mentor"].send_json({
+                    "type": "update",
+                    "code": data['code'],
+                    "solved": rooms[block_id]["solved"]
+                })
 
     except WebSocketDisconnect:
         if role == "mentor":
-            # Kick all students and delete room
             for student in rooms[block_id]["students"]:
                 await student.close(code=1000)
             del rooms[block_id]
         else:
-            rooms[block_id]["students"].remove(websocket)
-
+            if block_id in rooms and websocket in rooms[block_id]["students"]:
+                rooms[block_id]["students"].remove(websocket)
 @router.websocket("/ws/rooms/{block_id}")
 async def rooms_data_endpoint(websocket: WebSocket, block_id: str):
     await websocket.accept()
