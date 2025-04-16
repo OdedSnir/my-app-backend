@@ -74,6 +74,15 @@ async def websocket_endpoint(websocket: WebSocket, block_id: str):
                 )
                 if rooms[block_id]["solved"]:
                     print(f"websocket {websocket} solved the problem")
+                    for student in rooms[block_id]["students"]:
+                        await student.send_json({
+                            "type": "finished",
+                            "message": "Code successfully solved!"
+                        })
+                    await rooms[block_id]["mentor"].send_json({
+                        "type": "finished",
+                        "message": "Code successfully solved!"
+                    })
 
                 # Broadcast update to all students
                 for student in rooms[block_id]["students"]:
