@@ -8,7 +8,7 @@ app = FastAPI()
 #allows frontend to contact the server from same device but different ports.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

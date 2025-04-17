@@ -28,6 +28,9 @@ source backendVenv/bin/activate
 ```bash
 pip install -r requirements.txt
 ```
+## important
+python version neads to 3.11 and motor>=3.1
+
 
 ### Running MongoDB with Docker
 ```bash
