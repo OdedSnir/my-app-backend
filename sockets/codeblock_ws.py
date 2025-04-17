@@ -102,8 +102,18 @@ async def websocket_endpoint(websocket: WebSocket, block_id: str):
     except WebSocketDisconnect:
         if role == "mentor":
             for student in rooms[block_id]["students"]:
-                await student.close(code=1000)
+                try:
+                    student.send_json({
+                        "type": "update",
+                        "message": "Mentor left. Closing room.",
+                    })
+                    await student.close(code=1000)
+                except RuntimeError:
+                    print(f"⚠️ Could not notify student in {block_id}, socket may already be closed.")
+
+
             del rooms[block_id]
+            print(f"now rooms looks like this:\n{rooms}\n")
         else:
             if block_id in rooms and websocket in rooms[block_id]["students"]:
                 rooms[block_id]["students"].remove(websocket)
@@ -122,6 +132,7 @@ async def rooms_data_endpoint(websocket: WebSocket, block_id: str):
                         "student_count": len(info["students"]),
                         "mentor": str(info["mentor"].client if "mentor" in info else "none"),
                         "code": info["code"],
+                        "solved": info["solved"]
                     }
             elif block_id in rooms:
                 info = rooms[block_id]
@@ -129,9 +140,10 @@ async def rooms_data_endpoint(websocket: WebSocket, block_id: str):
                     "student_count": len(info["students"]),
                     "mentor": str(info["mentor"].client if "mentor" in info else "none"),
                     "code": info["code"],
+                    "solved": info["solved"]
                 }
             else:
-                data[block_id] = {"error": "block not found"}
+               data[block_id] = {"error": "block not found"}
             await websocket.send_json(data)
             await asyncio.sleep(2)
     except WebSocketDisconnect:
