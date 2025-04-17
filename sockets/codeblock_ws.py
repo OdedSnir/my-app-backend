@@ -117,34 +117,27 @@ async def websocket_endpoint(websocket: WebSocket, block_id: str):
         else:
             if block_id in rooms and websocket in rooms[block_id]["students"]:
                 rooms[block_id]["students"].remove(websocket)
-@router.websocket("/ws/rooms/{block_id}")
-async def rooms_data_endpoint(websocket: WebSocket, block_id: str):
+
+
+@router.websocket("/ws/rooms/")
+async def rooms_data_endpoint(websocket: WebSocket):
     await websocket.accept()
-    data: Dict[str, Dict] = {}
+    print("📡 Monitor connected to /ws/rooms/")
 
     try:
         while True:
+            current_rooms_copy = rooms.copy()
+            data = {}
 
-            #incorrect block_id send nothing
-            if block_id == "all":
-                for block_id, info in rooms.items():
-                    data[block_id] = {
-                        "student_count": len(info["students"]),
-                        "mentor": str(info["mentor"].client if "mentor" in info else "none"),
-                        "code": info["code"],
-                        "solved": info["solved"]
-                    }
-            elif block_id in rooms:
-                info = rooms[block_id]
+            for block_id, info in current_rooms_copy.items():
                 data[block_id] = {
-                    "student_count": len(info["students"]),
-                    "mentor": str(info["mentor"].client if "mentor" in info else "none"),
-                    "code": info["code"],
-                    "solved": info["solved"]
+                    "student_count": len(info.get("students", [])),
+                    "mentor": str(info.get("mentor").client) if "mentor" in info else "none",
+                    "code": info.get("code", ""),
+                    "solved": info.get("solved", False)
                 }
-            else:
-               data[block_id] = {"error": "block not found"}
+
             await websocket.send_json(data)
             await asyncio.sleep(2)
     except WebSocketDisconnect:
-        print(f"Monitor WebSocket for {block_id} disconnected.")
+        print("📴 Monitor WebSocket disconnected from /ws/rooms/")
