@@ -91,6 +91,21 @@ Start the server:
 uvicorn main:app --host 0.0.0.0 --port 8000
 ```
 
+
+### 🚀  Run the backend persistently:
+```bash
+cd ~/backend/my-app-backend
+source venv/bin/activate
+nohup uvicorn main:app --host 0.0.0.0 --port 8000 > backend.log 2>&1 &
+```
+### check if running:
+```bash
+ps aux | grep uvicorn
+```
+### kill Process
+```bash
+kill <pid>
+```
 ### ✅ Notes
 Make sure MongoDB is running before starting the FastAPI server.
 This backend serves an API consumed by a React frontend (not included here).
